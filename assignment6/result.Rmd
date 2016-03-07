@@ -1,0 +1,50 @@
+---
+title: "San Francisco incidents are much more concentrated in city center"
+author: "Roman Kislenok"
+date: "March 4th, 2016"
+output: pdf_document
+---
+
+## San Francisco incidents are much more concentrated in city center
+This investigation is done in Rmd 
+
+
+```{r}
+suppressWarnings(require(ggplot2))
+suppressWarnings(require(ggmap))
+suppressWarnings(require(bit64))
+suppressWarnings(require(data.table))
+sf_incidents <- fread("sanfrancisco_incidents_summer_2014.csv")
+seattle_incidents <- fread("seattle_incidents_summer_2014.csv")
+
+q1 <- qmap("seattle", zoom = 11, source = "google", maptype = "roadmap", color = "bw")
+q1 + 
+    geom_point(data = seattle_incidents, aes(x = Longitude, y = Latitude), alpha = 0.05) +
+    stat_density2d(data = seattle_incidents, aes(x = Longitude, y = Latitude, color = ..level.., geom = "tile"), size = 1.2) +
+    scale_color_distiller(palette = "Spectral")
+
+q2 <- ggplot(data = sf_incidents[Category == "KIDNAPPING"], aes(x = X, y = Y))
+q2 <- qmap("san francisco", zoom = 12, source = "google", maptype = "roadmap", color = "bw",
+           base_layer = q2, darken = c(0.2, "white"))
+q2 +
+    geom_point() +
+    stat_density2d(aes(color = ..level.., geom = "tile"), size = 1.2) +
+    scale_color_distiller(palette = "Spectral") + 
+    labs(color = "Density") +
+    facet_wrap(~DayOfWeek, ncol = 3)
+```
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r}
+summary(cars)
+```
+
+You can also embed plots, for example:
+
+```{r, echo=FALSE}
+plot(cars)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
