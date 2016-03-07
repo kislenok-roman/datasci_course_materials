@@ -5,7 +5,7 @@ date: "March 4th, 2016"
 output: pdf_document
 ---
 
-This investigation is done in [R markdown](http://rmarkdown.rstudio.com/) and fully available at [GitHub](https://github.com/kislenok-roman/datasci_course_materials/tree/master/assignment6).
+This investigation is done in [R markdown](http://rmarkdown.rstudio.com/) and fully available at [GitHub](https://github.com/kislenok-roman/datasci_course_materials/tree/master/assignment6) (including R code).
 
 In this investigation we try to compare geographical spread of police incidents in the San Francisco and Seattle.
 
