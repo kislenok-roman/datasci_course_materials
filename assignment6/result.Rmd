@@ -5,5 +5,63 @@ date: "March 4th, 2016"
 output: pdf_document
 ---
 
-## San Francisco incidents are much more concentrated in city center
-This investigation is done in <R markdown|http://rmarkdown.rstudio.com/> and fully available at  
+This investigation is done in [R markdown](http://rmarkdown.rstudio.com/) and fully available at [GitHub](https://github.com/kislenok-roman/datasci_course_materials/tree/master/assignment6).
+
+In this investigation we try to compare geographical spread of police incidents in the San Francisco and Seattle.
+
+```{r, echo=FALSE}
+# Import needed packages
+suppressPackageStartupMessages(require(ggplot2))
+suppressPackageStartupMessages(require(ggmap))
+suppressPackageStartupMessages(require(bit64))
+suppressPackageStartupMessages(require(data.table))
+suppressPackageStartupMessages(require(grid))
+suppressPackageStartupMessages(require(utils))
+# load the data
+sf_incidents <- fread("sanfrancisco_incidents_summer_2014.csv")
+seattle_incidents <- fread("seattle_incidents_summer_2014.csv")
+# build map for Seattle
+q1 <- ggplot(data = seattle_incidents[Longitude != 0], aes(x = Longitude, y = Latitude))
+q1 <- suppressMessages(qmap("seattle", zoom = 11, source = "google", maptype = "roadmap", color = "bw",
+                            base_layer = q1,
+                            darken = c(0.2, "white")))
+q1 <- q1 +
+    scale_color_distiller(palette = "Spectral", limits = c(0, 1300)) +
+    labs(color = "Density") +
+    geom_point(alpha = 0.05, fill = "black", color = "black") +
+    stat_density2d(aes(color = ..level.., geom = "polygon"), size = 1.2, show.legend = FALSE) +
+    ggtitle("Seattle incidents density")
+# build map for San Francisco
+q2 <- ggplot(data = sf_incidents, aes(x = X, y = Y))
+q2 <- suppressMessages(qmap("san francisco", zoom = 12, source = "google", maptype = "roadmap", color = "bw",
+                            base_layer = q2, 
+                            darken = c(0.2, "white")))
+q2 <- q2 +
+    scale_color_distiller(palette = "Spectral", limits = c(0, 1300)) +
+    labs(color = "Density") +
+    geom_point(alpha = 0.05, fill = "black", color = "black") +
+    stat_density2d(aes(color = ..level.., geom = "polygon"), size = 1.2) +
+    ggtitle("San Francisco incidents density")
+```
+
+We have comparable amount of incidents for both cities with geographical information:
+
+```{r, echo=FALSE,fig.height=4,fig.width=3}
+d1 <- rbindlist(list(list(City = "San Francisco", Incidents = nrow(sf_incidents[!is.na(X) & X != 0])), 
+                     list(City = "Seattle", Incidents = nrow(seattle_incidents[!is.na(Longitude) & Longitude != 0]))))
+ggplot(d1, aes(x = City, y = Incidents)) + geom_bar(stat = "identity", fill = "white", color = "black") + theme_bw() + geom_text(aes(label = Incidents), vjust = -0.4) + labs(x = "")
+```
+
+On the picture bellow we draw each incident as a black dot and density contours for incidents. It seams that most incidents in San Francisco are highly concentrated in the city center. In other parts of the city we have much lower level of incidents.
+
+```{r, echo=FALSE, fig.height=9, fig.width=9}
+print(q2)
+```
+On the contrary in Seattle incidents are spread across the city with slightly more incidents in the city center.
+```{r, echo=FALSE, fig.height=9, fig.width=9}
+print(q1)
+```
+
+It can be due to the population and businesses concentration across the cities.
+
+
