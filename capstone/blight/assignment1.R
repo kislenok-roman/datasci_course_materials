@@ -11,7 +11,6 @@ map <- get_map(location = c(all[, min(lon)], all[, min(lat)], all[, max(lon)], a
                zoom = "auto", scale = 575000, source = "osm")
 q1 <- ggmap(map, base_layer = q1, darken = c(0.2, "white"))
 q1 <- q1 +
-    labs(color = "Density") +
     geom_point(alpha = 0.05, fill = "black", color = "black") +
     ggtitle("Detroit incidents density") +
     geom_point(data = all[type == "detroit-demolition-permits"], aes(x = lon, y = lat),
@@ -51,28 +50,36 @@ ggplot(merge(x = all[, list(dt = seq(min(dt), max(dt), by = "1 day")), list(type
 diff <- function(dt, period) {
     seq(as.Date(dt), by = paste0("-", period), length.out = 2)[2]
 }
-#
+# utility function for distance calculation
+distanceEarth <- function(lat0, lon0, lat, lon) {
+    # degree -> radian
+    rad <- function(d) {
+        d * pi / 180
+    }
+    R <- 6371000 # Earth radius
+    acos(sin(rad(lat0)) * sin(rad(lat)) + cos(rad(lat0)) * cos(rad(lat)) * cos(rad(lon - lon0))) * R
+}
 # all - our dataset, should have lat & lon columns
 # max.dist - max distance in meters from (lon0, lat0) point, optimaly we will need a decay function, but we can apply it further
 # max.timespan - max timespan from dt0, optimally we will need a decay function, but
 # lon0, lat0 - base point spacial location
 # dt0 - base point time position
 eventsForPoint <- function(all, lat0, lon0, dt0, max.dist = 500, max.timespan = "1 year") {
-    # degree -> radian
-    rad <- function(d) {
-        d * pi / 180
-    }
-    R <- 6371000 # Earth radius
     # filter by date & we need type,
     all[dt >= diff(dt0, max.timespan) & dt < dt0,
                    list(type,
                         code,
                         timespan = dt0 - dt,
-                        distance = acos(sin(rad(lat0)) * sin(rad(lat)) + cos(rad(lat0)) * cos(rad(lat)) * cos(rad(lon - lon0))) * R)]
+                        distance = distanceEarth(lat0, lon0, lat, lon))]
 }
+
+
+# Decay function for distance
 decayDistance <- function(meters) {
     1 / meters ^ 2
 }
+
+# Decay function for time
 decayTimespan <- function(timespan) {
     1 / timespan
 }

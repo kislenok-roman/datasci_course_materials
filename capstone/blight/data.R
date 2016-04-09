@@ -69,6 +69,10 @@ d4 <- d4[, list(type = "detroit-demolition-permits",
                 lon = median(as.numeric(gsub(".*, ([0-9.\\-]+)[)]$", "\\1", site_location)))),
          by = list(id = PERMIT_NO)]
 
+# it seems that we can expect problems, as data not tidy...
+d4[!is.na(lat), uniqueN(address), by = list(lat, lon)][V1 > 1]
+# there is (lat, lon) pairs that direct to diff address. I check manualy some addresses... there are problems
+
 # unite
 all <- rbind(d1, d2, d3, d4)
 rm(d1, d2, d3, d4)
