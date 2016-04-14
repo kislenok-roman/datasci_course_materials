@@ -70,7 +70,7 @@ eventsForPoint <- function(all, lat0, lon0, dt0, max.dist = 500, max.timespan = 
                    list(type,
                         code,
                         timespan = dt0 - dt,
-                        distance = distanceEarth(lat0, lon0, lat, lon))]
+                        distance = distanceEarth(lat0, lon0, lat, lon))][distance <= max.dist ]
 }
 
 
