@@ -13,7 +13,10 @@ product <- merge(x = all[type != "detroit-demolition-permits" &
                              dt <= train[, max(dt)]],
                  y = train[, list(lat, lon, label)],
                  by = c("lat", "lon"),
-                 all.x = TRUE)[is.na(label), list(dt = min(dt), label = "Normal"), list(lat, lon)]
+                 all.x = TRUE)[is.na(label),
+                               list(dt = all[type == "detroit-demolition-permits", max(dt)], # we knwo that Normal buildings still here), but we have no super fresh data
+                                    label = "Normal"),
+                               list(lat, lon)]
 train <-  rbind(train,
                 product[sample.int(nrow(other1), nrow(train))])
 

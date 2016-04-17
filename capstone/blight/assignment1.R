@@ -47,7 +47,7 @@ ggplot(merge(x = all[, list(dt = seq(min(dt), max(dt), by = "1 day")), list(type
 ## I try to write down a function to search dataset for events
 
 # utility function to calculate date in past from `dt`
-diff <- function(dt, period) {
+"%diff%" <- function(dt, period) {
     seq(as.Date(dt), by = paste0("-", period), length.out = 2)[2]
 }
 # utility function for distance calculation
@@ -57,7 +57,7 @@ distanceEarth <- function(lat0, lon0, lat, lon) {
         d * pi / 180
     }
     R <- 6371000 # Earth radius
-    acos(sin(rad(lat0)) * sin(rad(lat)) + cos(rad(lat0)) * cos(rad(lat)) * cos(rad(lon - lon0))) * R
+    acos(pmax(-1, pmin(1, sin(rad(lat0)) * sin(rad(lat)) + cos(rad(lat0)) * cos(rad(lat)) * cos(rad(lon - lon0))))) * R
 }
 # all - our dataset, should have lat & lon columns
 # max.dist - max distance in meters from (lon0, lat0) point, optimaly we will need a decay function, but we can apply it further
@@ -66,11 +66,12 @@ distanceEarth <- function(lat0, lon0, lat, lon) {
 # dt0 - base point time position
 eventsForPoint <- function(all, lat0, lon0, dt0, max.dist = 500, max.timespan = "1 year") {
     # filter by date & we need type,
-    all[dt >= diff(dt0, max.timespan) & dt < dt0,
-                   list(type,
-                        code,
-                        timespan = dt0 - dt,
-                        distance = distanceEarth(lat0, lon0, lat, lon))][distance <= max.dist ]
+    all[dt >= dt0 %diff% max.timespan &
+        dt < dt0,
+        list(type,
+             code,
+             timespan = dt0 - dt,
+             distance = distanceEarth(lat0, lon0, lat, lon))][distance <= max.dist ]
 }
 
 
