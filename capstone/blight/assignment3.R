@@ -46,22 +46,22 @@ if (FALSE) {
                                               type = "response") >= 0.5,
                                       levels = c("FALSE", "TRUE"),
                                       labels = c("Normal", "Dismantle")))
-            tp <- t1[1, 1]
-            tn <- t1[2, 2]
-            fp <- t1[2, 1]
+            tp <- t1[2, 2]
+            tn <- t1[2, 1]
+            fp <- t1[1, 2]
             fn <- t1[2, 2]
 
             result[[length(result) + 1]] <- list(dist = dist,
                                                  timespan = timespan,
-                                                 sensitivity = tp / sum(t1[1, ]),
-                                                 precision = tp / sum(t1[, 1]),
+                                                 sensitivity = tp / sum(t1[2, ]),
+                                                 precision = tp / sum(t1[, 2]),
                                                  accuracy = sum(diag(t1)) / sum(t1),
                                                  f1 = 2 * tp / (2 * tp + fp + fn))
         }
     }
     # choose our model specification
     rbindlist(result)[order(-accuracy)]
-    # max accuracy is 0.63 for 300m & 1 month
+    # max accuracy is 0.96 for 300m & 1 month
 }
 
 # fit a model
