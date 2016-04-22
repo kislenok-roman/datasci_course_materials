@@ -65,18 +65,21 @@ if (FALSE) {
 }
 
 # fit a model
-a1 <- rbind(train[, list(lat, lon, dt, label, type = "train")],
-            validation[, list(lat, lon, dt, label, type = "validation")],
-            test[, list(lat, lon, dt, label, type = "test")])
-res <- grabData1(a1, all[type == "detroit-blight-violations"], 300, "1 month")
-g1 <- glm(label ~ value, res[type %in% c("train", "validation")], family = "quasibinomial")
-summary(g1)
-
+if (FALSE) {
+    a1 <- rbind(train[, list(lat, lon, dt, label, type = "train")],
+                validation[, list(lat, lon, dt, label, type = "validation")],
+                test[, list(lat, lon, dt, label, type = "test")])
+    res <- grabData1(a1, all[type == "detroit-blight-violations"], 300, "1 month")
+    g1 <- glm(label ~ value, res[type %in% c("train", "validation")], family = "quasibinomial")
+    summary(g1)
+}
 # validate
-res[type == "test", list(label,
-                         labelPredict = factor(predict(g1,
-                                                       newdata = res[type == "test"],
-                                                       type = "response") >= 0.5,
-                                               levels = c("FALSE", "TRUE"),
-                                               labels = c("Normal", "Dismantle")))][, list(sum(label == labelPredict) / .N)]
+if (FALSE) {
+    res[type == "test", list(label,
+                             labelPredict = factor(predict(g1,
+                                                           newdata = res[type == "test"],
+                                                           type = "response") >= 0.5,
+                                                   levels = c("FALSE", "TRUE"),
+                                                   labels = c("Normal", "Dismantle")))][, list(sum(label == labelPredict) / .N)]
+}
 # 0.65
