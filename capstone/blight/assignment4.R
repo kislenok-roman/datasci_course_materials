@@ -83,7 +83,7 @@ if (!file.exists("temp/variable.RData")) {
 }
 
 # 4. produce result dataset
-if (!file.exists("temp/result_dataset.RData"))
+if (!file.exists("temp/result_dataset.RData")) {
     dataset_features <- lapply(1:length(choosen_predictors), function(i) {
         res <- grabData1(dataset,
                          all[type == choosen_predictors[[i]]$dstype],
@@ -97,6 +97,7 @@ if (!file.exists("temp/result_dataset.RData"))
         }
         setnames(res, "value", value_name)
     })
+    dataset_features <- do.call("cbind", dataset_features)
 
     saveRDS(dataset_features, "temp/result_dataset.RData")
 } else {
