@@ -1,6 +1,6 @@
-require(data.table)
-require(ggmap) # geocode with google
-require(XML) # parse State coords
+suppressPackageStartupMessages(require(data.table))
+suppressPackageStartupMessages(require(ggmap)) # geocode with google
+suppressPackageStartupMessages(require(XML)) # parse State coords
 
 # process datasets
 # 1. detroit-blight-violations

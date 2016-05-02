@@ -60,7 +60,8 @@ if (!file.exists("temp/variable.RData")) {
         }
     }
     rm(res, tn, tp, fn, fp, t1, g1)
-    rbindlist(result)[sensitivity >= 0.5 | precision > 0.5][order(-accuracy, -f1)]
+    result <- rbindlist(result)
+    result[sensitivity >= 0.5 | precision > 0.5][order(-accuracy, -f1)]
     # select the best predictors
     # detroit-blight-violations
     #  300m + 1 month
@@ -78,8 +79,12 @@ if (!file.exists("temp/variable.RData")) {
                                list(dstype = "detroit-crime", dist = 50, timespan = "1 year"),
                                list(dstype = "detroit-demolition-permits", dist = 1000, timespan = "1 month"))
     saveRDS(choosen_predictors, "temp/variable.RData")
+    saveRDS(result, "temp/result_choose.RData")
+    result_choose <- result
+    rm(result)
 } else {
     choosen_predictors <- readRDS("temp/variable.RData")
+    result_choose <- readRDS("temp/result_choose.RData")
 }
 
 # 4. produce result dataset

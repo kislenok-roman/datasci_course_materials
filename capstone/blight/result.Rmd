@@ -1,0 +1,290 @@
+---
+title: "Building dismantle prediction in the Detroit"
+author: "Roman Kislenok"
+date: "May 1st, 2016"
+output: pdf_document
+---
+
+### Abstract
+In this study we try to fit a simple model that assign to a buildings a probability of being dismantled in a near future by using blight violations, crimes, and demolition permits events for this building and buildings nearby.
+```{r, echo = FALSE, results = 'hide'}
+suppressPackageStartupMessages(require(ggplot2))
+suppressPackageStartupMessages(require(scales))
+source("assignment4.R")
+```
+
+### The repeatability
+All code for this project including this particular report are available at Git Hub [1]. 
+
+### On definition of the buildings
+Our data-sets generously provided by Detroit Open Data [2] including blight violations, crimes, and demolition permits have addresses and coordinates. But it's easy to check that coordinates can point to a road nearby particular address associated with event or sometimes to some distant places in the Detroit (or even outside). We could come up with some interesting approaches (like geohashing and clustering) to unite events into buildings, but really we need not to. We'll use points on the map as a proxy for buildings. We want to think about "the building area" and include all events that lie inside specific radius _R_ from point on the Detroit map in not so distance past (_t_). 
+
+Both radius and time-span are to be estimated. 
+
+### Spliting data
+We think that demolition permits points to the real buildings as city should pay for demolition and, we think, double check this data. We came out with `r dataset[label == "Dismantle", .N]` Dismantled buildings.
+
+All other points are considered to be potential not demolished buildings. The proportion of demolished buildings to normal estimated to be 1 in 20, this estimation has to be questioned in future research!
+
+We prepared our data-sets (details provided in Table 1):
+
+* 90% of the buildings from demolition permits goes to train data-set, add normal buildings to have 50%-50% proportion;
+* 5% of the buildings from demolition permits goes to validation data-set, add normal buildings to represent "real" situation of 1 to 20; 
+* 5% of the buildings from demolition permits goes to test data-set, add normal buildings to represent "real" situation of 1 to 20;
+
+```{r, echo = FALSE, result = "asis"}
+knitr::kable(dcast.data.table(dataset, 
+                              label ~ type, 
+                              fun.aggregate = length, 
+                              value.var = "label")[, list(Label = label, 
+                                                          Train = paste0(train, " (", round(100 * train / sum(train), 2), "%)"), 
+                                                          Validation = paste0(validation, " (", round(100 * validation / sum(validation), 2), "%)"),
+                                                          Test = paste0(test, " (", round(100 * test / sum(test), 2), "%)"))],
+             caption = "Train, test, and validation datasets")
+```
+
+```{r, echo = FALSE, fig.width = 7}
+q1 <- ggplot(data = dataset[label == "Dismantle"], aes(x = lon, y = lat))
+map <- get_map(location = c(dataset[, min(lon)], dataset[, min(lat)], dataset[, max(lon)], dataset[, max(lat)]),
+               zoom = "auto", 
+               scale = 575000, 
+               source = "osm")
+q1 <- ggmap(map, base_layer = q1, darken = c(0.2, "white"))
+q1 <- q1 +
+    geom_point(alpha = 0.5, fill = "black", color = "black") +
+    ggtitle("Detroit demolishion permits - our buildings labeled `Dismantle`") +
+    xlab("") +
+    ylab("")
+q1
+```
+
+```{r, echo = FALSE, fig.width = 7}
+q1 <- ggplot(data = dataset[label == "Normal"], aes(x = lon, y = lat))
+map <- get_map(location = c(dataset[, min(lon)], dataset[, min(lat)], dataset[, max(lon)], dataset[, max(lat)]),
+               zoom = "auto", 
+               scale = 575000, 
+               source = "osm")
+q1 <- ggmap(map, base_layer = q1, darken = c(0.2, "white"))
+q1 <- q1 +
+    geom_point(alpha = 0.25, fill = "black", color = "black") +
+    ggtitle("Our buildings labeled `Normal`") +
+    xlab("") +
+    ylab("")
+q1
+```
+
+Validation data-set we'll use to select features. Both train and validation data-sets we'll use to train our final model.
+
+### Feature building and selection
+Each "Dismantle" labeled buildings has the associated _state_ date (of particular demolition permit) and for all "Normal" labeled buildings we set _state_ date to the maximum date of available demolition permits. It's done so, because we know that buildings are still "Normal" up to the last entry in demolition permits data-set. 
+Each feature would be the amount of different events in a particular distance from the building in not so distant past from _state_ date. To select distance and timespan we train a simple logistic regression with one feature using train data-set and evaluate results using validation data-set. 
+
+We use events from:
+
+* "detroit-blight-violations" data-set provided on Coursera web site, similar data-set can be obtained from Detroit Open Data;
+
+* "detroit-crime" data-set obtained from Detroit Open Data, originally provided file has events only since 2015;
+
+* "detroit-demolishion-permits" data-set provided on Coursera web site, similar data-set can be obtained from Detroit Open Data.
+
+We intentionally skip "detroit-311" data-set as it only contains data since the middle of 2014.
+
+The results are presented on a pictures below. Combinations of distance and timespan chosen to "cover" some greater area of parameters with similar values.
+
+```{r, fig.height = 5, fig.width = 7, echo = FALSE}
+ggplot(result_choose[, list(type, 
+                            dist,
+                            timespan,
+                            value = f1)],
+       aes(x = as.factor(dist), 
+           y = factor(timespan, c("1 week", "1 month", "3 month", "6 month", "1 year", "2 year")),
+           size = value, 
+           label = round(value, 2))) + 
+    geom_point(na.rm = TRUE) +
+    geom_text(size = 2, nudge_y = 0.3, na.rm = TRUE) +
+    scale_x_discrete("Distance, m") +
+    scale_y_discrete("Timespan, period") +
+    scale_size_area("F1", limits = c(0, 1)) +
+    facet_grid(~ type) +
+    ggtitle(expression(atop("F1-metrics for different timespan and distance",
+                       atop("Choosen points highlighted")))) +
+    theme_bw() +
+    geom_point(data = merge(x = rbindlist(choosen_predictors)[, list(type = dstype, dist, timespan)],
+                            y = result_choose[, list(type, dist, timespan, value = f1)],
+                            by = c("type", "dist", "timespan")), 
+               color = "red",
+               shape = 21,
+               fill = "black",
+               stroke = 2,
+               show.legend = FALSE)
+```
+
+To choose parameters we use accuracy, F1 metrics and common logic (not documented here). Here we should note that accuracy is expected to be high - almost all buildings are Normal in validation data-set, so accuracy of 0.96 should not confuse you. F1 is more balanced metrics and much more appropriate here.  
+
+Our chosen predictors listed in the Table 2.
+
+```{r, echo = FALSE, result = "asis"}
+knitr::kable(rbindlist(choosen_predictors)[, list(Dataset = dstype, 
+                                                  "Distance, m" = dist, 
+                                                  Timespan = timespan)],
+             caption = "Choosen predictors")
+```
+
+```{r, fig.height = 5, fig.width = 7, echo = FALSE}
+ggplot(result_choose[, list(type, 
+                            dist,
+                            timespan,
+                            value = accuracy)],
+       aes(x = as.factor(dist), 
+           y = factor(timespan, c("1 week", "1 month", "3 month", "6 month", "1 year", "2 year")),
+           size = value, 
+           label = round(value, 2))) + 
+    geom_point(na.rm = TRUE) +
+    geom_text(size = 2, nudge_y = 0.3, na.rm = TRUE) +
+    scale_x_discrete("Distance, m") +
+    scale_y_discrete("Timespan, period") +
+    scale_size_area("Accuracy", limits = c(0, 1)) +
+    facet_grid(~ type) +
+    ggtitle(expression(atop("Accuracy for different timespan and distance",
+                       atop("Choosen points highlighted")))) +
+    theme_bw() +
+    geom_point(data = merge(x = rbindlist(choosen_predictors)[, list(type = dstype, dist, timespan)],
+                            y = result_choose[, list(type, dist, timespan, value = accuracy)],
+                            by = c("type", "dist", "timespan")), 
+               color = "red",
+               shape = 21,
+               fill = "black",
+               stroke = 2,
+               show.legend = FALSE)
+```
+
+### Model
+```{r, echo = FALSE}
+formula <- as.formula(paste0("label ~ ", paste0("`", names(dataset_features)[-(1:2)], "`", collapse = " + ")))
+model1 <- glm(formula, 
+              dataset_features[type == "train"], 
+              family = "quasibinomial")
+model2 <- glm(label ~ `detroit-blight-violations_300_1 month` +
+                  `detroit-crime_1000_1 month` + `detroit-crime_50_1 year` + 
+                  `detroit-demolition-permits_1000_1 month`, 
+              dataset_features[type == "train"], 
+              family = "quasibinomial")
+```
+We fit result model to train data-set using binomial model due to its great interpretability. 
+First fit (in Table 3) using all selected features has meaningless coefficient for `detroit-blight-violations_10_6 month`, to be excluded from the final model (Table 4).
+
+Our model predicts the odds of a building being Dismantled increase with amount of blight violations in 300m in last month. But it's quite strange that crimes amount in 1km last month, crimes amount in 50m in last year, and amount of demolition permits in 1km last month all has negative impact on odds for building being Dismantled.
+
+```{r, echo = FALSE}
+knitr::kable(summary(model1)$coef,
+             caption = "The model with all selected features")
+```
+```{r, echo = FALSE}
+knitr::kable(summary(model2)$coef,
+             caption = "The model including features with meaningful coeficients")
+```
+
+#### Model threshold.
+```{r, echo = FALSE}
+p1 <- predict(model2, newdata = dataset_features[type == "validation"], type = "response")
+p1 <- data.table(label = dataset_features[type == "validation", label], prob = p1)
+
+p2 <- list()
+for (thr in seq(0, 1, length.out = 101)) {
+    p1[, pred_label := factor(prob > thr, levels = c("FALSE", "TRUE"))]
+    t1 <- table(p1[, list(label, pred_label)])
+    fp <- t1[1, 2] / sum(t1[1, ])
+    tp <- t1[2, 2] / sum(t1[2, ])
+    p2[[length(p2) + 1]] <- list(thr = thr, fp = fp, tp = tp, accuracy = sum(diag(t1)) / sum(t1))
+}
+p2 <- rbindlist(p2)
+p3 <- p2[order(accuracy, thr), list(p = rleid(round(accuracy, 3)), thr, accuracy)][, list(thr = min(thr), accuracy = accuracy[1]), by = p][order(-p)][1:2]
+```
+
+Evaluating on a validation data-set using different thresholds for treating building as Dismantled we produce a nice convex ROC-curve. Using it with plot of model predicted probability to the true labels gives us optimal threshold for classification to optimize accuracy (conservative model).
+
+```{r, fig.height = 4, fig.width = 7, echo = FALSE}
+ggplot(p1, aes(x = prob, y = label)) + 
+    geom_point(position = position_jitter()) +
+    theme_bw() +
+    scale_x_continuous("Probability of being Dismantled", labels = percent) +
+    scale_y_discrete("Label") +
+    ggtitle("Probability for building being Dismantled and True label") +
+    geom_vline(xintercept = p3[1, thr], linetype = 2, color = "gray") + 
+    geom_text(x = p3[1, thr], label = p3[1, thr], y = 0.5, hjust = 1.1, check_overlap = TRUE, color = "gray") +
+    geom_vline(xintercept = p3[2, thr], linetype = 2, color = "gray") + 
+    geom_text(x = p3[2, thr], label = p3[2, thr], y = 2.5, hjust = -0.1, check_overlap = TRUE, color = "gray")
+```
+
+The optimal threshold cut lie within interval of `r p3[order(thr), paste0(thr, collapse = " - ")]` and gives us accuracy of `r round(p3[, mean(accuracy)], 3)`. It should be mentioned here that there are a lot of Dismantled buildings with lower probability, so given another optimization goal we can catch them by this model, of course with a lot of Normal buildings being misclassified. Also our result suggests that we should include more features in a future models.
+
+As a result we want to stick with lower value for threshold - `r p3[, min(thr)]`.
+
+```{r, fig.height = 5, fig.width = 5, echo = FALSE, fig.align = "center"}
+ggplot(p2, aes(x = fp, y = tp)) + geom_line() +
+    theme_bw() +
+    scale_x_continuous("False Positive Rate", limits = c(0, 1)) +
+    scale_y_continuous("True Positive Rate", limits = c(0, 1)) +
+    ggtitle("ROC-curve") +
+    geom_abline(slope = 1, color = "gray", linetype = 2) +
+    geom_text(x = 0.5, y = 0.5, check_overlap = TRUE, label = "Random guess model", hjust = -0.03, color = "gray")
+```
+
+#### Final model and evaluation.
+```{r, echo = FALSE}
+set.seed(20160501)
+model3 <- glm(label ~ `detroit-blight-violations_300_1 month` +
+                  `detroit-crime_1000_1 month` + `detroit-crime_50_1 year` + 
+                  `detroit-demolition-permits_1000_1 month`, 
+              rbind(dataset_features[type == "train"],
+                    dataset_features[type == "validation" & label == "Dismantle"], 
+                    dataset_features[type == "validation" & label == "Normal"][order(runif(.N))][1:nrow(dataset_features[type == "validation" & label == "Dismantle"])]),
+              family = "quasibinomial")
+pred <- predict(model3, newdata = dataset_features[type == "test"], type = "response")
+pred <- data.table("True label" = dataset_features[type == "test", label], 
+                   "Predict label" = factor(pred > p3[, min(thr)], levels = c("FALSE", "TRUE"), labels = c("Normal", "Dismantle")))
+```
+
+The final model is build using train and validation data-sets, labels assigned using threshold of `r p3[, min(thr)]`. Coefficients are almost not changed from previous fit (compare Tables 4 and 5). Contingency table (Table 6) suggests that while having a great accuracy of `r round(sum(diag(table(pred))) / sum(table(pred)), 3)` we have a great misclassification rate (also look at Table 7 for other metrics).
+
+```{r, echo = FALSE}
+knitr::kable(summary(model3)$coef,
+             caption = "The final model coeficients")
+```
+
+```{r, echo = FALSE}
+knitr::kable(table(pred),
+             caption = "Contingency table for the final model")
+```
+
+```{r, echo = FALSE}
+knitr::kable(rbindlist(list(list(Metrics = "Accuracy", Value = pred[, sum(`True label` == `Predict label`) / .N]),
+                            list(Metrics = "False negative rate (error rate)", Value = pred[, sum(`True label` != `Predict label`) / .N]),
+                            list(Metrics = "True positive rate (recall)", Value = pred[, sum(`True label` == "Dismantle" & `Predict label` == "Dismantle") / sum(`True label` == "Dismantle")]),
+                            list(Metrics = "Precision", Value = pred[, sum(`True label` == "Dismantle" & `Predict label` == "Dismantle") / sum(`Predict label` == "Dismantle")]),
+                            list(Metrics = "F1", Value = pred[, list(tp = sum(`True label` == "Dismantle" & `Predict label` == "Dismantle"), ntn = sum(`True label` != "Normal" | `Predict label` != "Normal"))][, 2 * tp / (tp + ntn)]))), caption = "Performance metrics for the final model")
+         
+```
+
+### Other potential features to consider
+Proposed process allow us to include other data sets from Detroit Open Data or any other sources with or without spatial information. Some data-sources to be considered includes:
+
+* there are more information in data used:
+
+    * payment status for blight violations - we should check whether not paying bills increase probability of building being blighted in future,
+
+    * type of blight violation, different crime categories may have different implications on status;
+
+* blight may be the result of the local economic circumstances, so it'll be great to use some data regard local business health and vacant jobs;
+
+* it would be interested to investigate blight in regard to Schools and other education centers, Recreations, Parks and other public places;
+
+* some social information about citizens.
+
+### Conclusions
+Tra-ta-ta
+
+### References and links
+* [1] https://github.com/kislenok-roman/datasci_course_materials/tree/master/capstone/blight
+* [2] Detroit Open Data (https://data.detroitmi.gov)
+* [3] D. Kahle and H. Wickham. ggmap: Spatial Visualization with ggplot2. The R Journal, 5(1), 144-161. URL   http://journal.r-project.org/archive/2013-1/kahle-wickham.pdf
