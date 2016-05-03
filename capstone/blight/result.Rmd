@@ -1,5 +1,5 @@
 ---
-title: "Building dismantle prediction in the Detroit"
+title: "Buildings blight in Detroit"
 author: "Roman Kislenok"
 date: "May 1st, 2016"
 output: pdf_document
@@ -230,7 +230,7 @@ ggplot(p2, aes(x = fp, y = tp)) + geom_line() +
     geom_text(x = 0.5, y = 0.5, check_overlap = TRUE, label = "Random guess model", hjust = -0.03, color = "gray")
 ```
 
-#### Final model and evaluation.
+#### Results
 ```{r, echo = FALSE}
 set.seed(20160501)
 model3 <- glm(label ~ `detroit-blight-violations_300_1 month` +
@@ -281,8 +281,6 @@ Proposed process allow us to include other data sets from Detroit Open Data or a
 
 * some social information about citizens.
 
-### Conclusions
-Tra-ta-ta
 
 ### References and links
 * [1] https://github.com/kislenok-roman/datasci_course_materials/tree/master/capstone/blight
